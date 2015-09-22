@@ -1,0 +1,55 @@
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+  /**
+   * Run initializations on sidebar load.
+   */
+  $(function() {
+    // Assign handler functions to sidebar elements here, if needed.
+    $('#sidebar-process-images-button').click(onProcessImagesClick);
+
+    // Call the server here to retrieve any information needed to build
+    // the dialog, if necessary.
+  });
+
+  /**
+   * Calls the server to retrieve information from the sheet.
+   * Gets the value in the active cell, which is then placed in the
+   * sidebar text field.
+   */
+  function onProcessImagesClick() {
+    // Gather any information that needs to be sent to the server here.
+    var value = $('#sidebar-value').val();
+    showStatus('Processing...');
+    // Send the value to the server and handle the response.
+    google.script.run
+        .withSuccessHandler(
+          function(msg, element) {
+            // Respond to success conditions here.
+            $('#sidebar-value').val(msg);
+            showStatus('Processed image files successfully');
+            element.disabled = false;
+          })
+        .withFailureHandler(
+          function(msg, element) {
+            // Respond to failure conditions here.
+            showStatus(msg, 'error');
+            element.disabled = false;
+          })
+        .withUserObject(this)
+        .listImageFiles(value);
+  }
+
+  /**
+   * Displays the given status message in the sidebar.
+   *
+   * @param {String} msg The status message to display.
+   * @param {String} classId The message type (class id) that the message
+   *   should be displayed as.
+   */
+  function showStatus(msg, classId) {
+    $('#sidebar-status').removeClass().html(msg);
+    if (classId) {
+      $('#sidebar-status').addClass(classId);
+    }
+  }
+</script>
