@@ -37,23 +37,26 @@ function showSidebar() {
   SpreadsheetApp.getUi().showSidebar(ui);
 }
 
+var sheetHeaders = ["id", "file_created_datetime", "image_exif_datetime", "file_created_date", "file_created_time", "title",  "location", "latitude", "longitude", "thumbnail_url", "web_content_url", "duplicate", "infobox_html"];
 function listImageFiles(folder) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheets()[0];
   var files = getFilesFromFolder(folder);
-  var sheetHeaders = ["id", "file_created_date", "image_exif_date", "title",  "location", "latitude", "longitude", "thumbnail_url", "web_content_url"];
-  
-  addSheetHeaders(sheet, sheetHeaders);
-  while (files.hasNext()) {
-    var file = files.next();
-    addMetadata(file, sheet);   
+
+  addSheetHeaders(sheet);
+  // Handle folders with the same exact name, iterate through
+  for (var i = 0; i < files.length; i++) {
+    while (files[i].hasNext()) {
+      var file = files[i].next();
+      addMetadata(file, sheet);   
+    }
   }
 }
 
 // Add sheet headers
-function addSheetHeaders(sheet, sheetHeaders) {
+function addSheetHeaders(sheet) {
   var firstRowValues = sheet.getRange(1, 9, 1);
-  Logger.log(firstRowValues.isBlank());
+  
   if (firstRowValues.isBlank()) {
     sheet.appendRow(sheetHeaders);
   }
@@ -61,7 +64,15 @@ function addSheetHeaders(sheet, sheetHeaders) {
 
 // Get files from inputted folder name
 function getFilesFromFolder(folder) {
-  return DriveApp.getFoldersByName(folder).next().getFiles();
+  var folders = DriveApp.getFoldersByName(folder);
+  var files = [];
+  
+  while (folders.hasNext()) {
+    var folder = folders.next();
+    var currentFiles = folder.getFiles();
+    files.push(currentFiles);
+  }
+  return files
 }
 
 // Add metadata to spreadsheet
@@ -71,31 +82,87 @@ function addMetadata(file, sheet) {
 
   // Only allow images and mp4 videos
   if (allowedMimeTypes.indexOf(mimeType) > -1) {
-    var metadata = getMetadata(file.getId() || 'unknown');
+    var metadata = getMetadata(file.getId() || 'unknown', sheet);
     sheet.appendRow(metadata);
   }
 }
 
 // Get photo metadata
-function getMetadata(fileId) {
+function getMetadata(fileId, sheet) {
   var file = Drive.Files.get(fileId);
+  
+  // Default values
   var NA = "N/A";
   var location = NA;
   var latitude = NA;
   var longitude = NA;
-  var imageDate = NA;
+  var imageDateTime = NA;
+  
+  // Get rid of key/value pair after & in URL
   var contentUrl = file.webContentLink.split("&")[0];
-    if (file.imageMediaMetadata !== undefined) {
+  
+  // Get location metadata and date if imageMediaMetadata is not undefined
+  if (file.imageMediaMetadata !== undefined) {
     if (file.imageMediaMetadata.location !== undefined) {
       location = file.imageMediaMetadata.location.latitude + ", " + file.imageMediaMetadata.location.longitude;
       latitude = file.imageMediaMetadata.location.latitude;
       longitude = file.imageMediaMetadata.location.longitude;    
     }
-    imageDate = file.imageMediaMetadata.date;
-  }  
+    imageDateTime = file.imageMediaMetadata.date || NA;
+  }
   
-  var metadata = [file.id, file.createdDate, imageDate , file.title, location, latitude, longitude, file.thumbnailLink, contentUrl];
+  // Check for and indicate duplicates
+  var lastRow = sheet.getLastRow();
+  var duplicate = "";
+  if (lastRow > 1) {
+    var existingFileIds = checkForDuplicates(sheet, lastRow);
+    for (var i = 0; i < existingFileIds.length; i++) {
+      if (existingFileIds[i][0] == file.id) {
+        duplicate = "Y";
+      }
+    }
+  }
+
+  // Format datetime, date, and time
+  var createdDateTime = new Date(Date.parse(file.createdDate));
+  var month = createdDateTime.getMonth() + 1; // zero based value
+  var day = createdDateTime.getDate();
+  var year = createdDateTime.getFullYear();
+  var date = month + "/" + day + "/" + year;
+  var hours = createdDateTime.getHours();
+  var minutes = createdDateTime.getMinutes();
+  var seconds = createdDateTime.getSeconds();
+  var time = hours + ":" + minutes + ":" + seconds;
+
+  var infoBox = 
+    "<div class='cartodb-popup v2'>" +
+      "<a href='#close' class='cartodb-popup-close-button close'>x</a>" +
+      "<div class='cartodb-popup-content-wrapper'>" +
+        "<div class='cartodb-popup-content'>" +
+          "<h4>" + sheetHeaders[1] + "</h4>" +
+          "<p>" + createdDateTime + "</p>" +
+          "<h4>" + sheetHeaders[6] + "</h4>" +
+          "<p>" + location + "</p>" +
+          "<h4>" + sheetHeaders[11] + "</h4>" +
+          "<img src=" + contentUrl + " width='100px' />" +
+          "<h4>" + sheetHeaders[5] + "</h4>" +
+          "<p>" + file.title + "</p>" +
+        "</div>" +
+      "</div>" +
+      "<div class='cartodb-popup-tip-container'></div>" +
+    "</div>";
+  
+  // Build metadata row
+  var metadata = [file.id, createdDateTime, imageDateTime, date, time, file.title, location, latitude, longitude, file.thumbnailLink, contentUrl, duplicate, infoBox];
 
   // If metaData is 'undefined', return an empty object
   return metadata ? metadata : {};
 }
+
+function checkForDuplicates(sheet, lastRow) {
+  var currentFileIds = sheet.getRange(2, 1, lastRow);
+  
+  return currentFileIds.getValues();
+}
+
+
