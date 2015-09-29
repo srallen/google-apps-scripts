@@ -2,7 +2,7 @@
  * @OnlyCurrentDoc  Limits the script to only accessing the current spreadsheet.
  */
 
-var SIDEBAR_TITLE = 'Process Images';
+var SIDEBAR_TITLE = 'Process Media';
 
 /**
  * Adds a custom menu with items to show the sidebar and dialog.
@@ -12,7 +12,7 @@ var SIDEBAR_TITLE = 'Process Images';
 function onOpen(e) {
   SpreadsheetApp.getUi()
       .createAddonMenu()
-      .addItem('Show sidebar', 'showSidebar')
+      .addItem('Start Media Processing', 'showSidebar')
       .addToUi();
 }
 
@@ -38,17 +38,22 @@ function showSidebar() {
 }
 
 var sheetHeaders = ["id", "file_created_datetime", "image_exif_datetime", "file_created_date", "file_created_time", "title",  "location", "latitude", "longitude", "thumbnail_url", "web_content_url", "duplicate", "infobox_html"];
-function listImageFiles(folder) {
+function listImageFiles(folderName) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheets()[0];
-  var files = getFilesFromFolder(folder);
+  var files = getFilesFromFolder(folderName);
 
   addSheetHeaders(sheet);
   // Handle folders with the same exact name, iterate through
   for (var i = 0; i < files.length; i++) {
-    while (files[i].hasNext()) {
-      var file = files[i].next();
-      addMetadata(file, sheet);   
+    Logger.log(files[i].hasNext())
+    if (files[i].hasNext()) {
+      while (files[i].hasNext()) {
+        var file = files[i].next();
+        addMetadata(file, sheet);   
+      }    
+    } else {
+      throw new Error("No files found or in a nested folder hierarchy.");
     }
   }
 }
@@ -63,14 +68,18 @@ function addSheetHeaders(sheet) {
 }
 
 // Get files from inputted folder name
-function getFilesFromFolder(folder) {
-  var folders = DriveApp.getFoldersByName(folder);
+function getFilesFromFolder(folderName) {
+  var folders = DriveApp.getFoldersByName(folderName);
   var files = [];
   
-  while (folders.hasNext()) {
-    var folder = folders.next();
-    var currentFiles = folder.getFiles();
-    files.push(currentFiles);
+  if (folders.hasNext()) {
+    while (folders.hasNext()) {
+      var folder = folders.next();
+      var currentFiles = folder.getFiles();
+      files.push(currentFiles);
+    }
+  } else {
+    throw new Error("No folder with that name."); 
   }
   return files
 }
@@ -84,6 +93,8 @@ function addMetadata(file, sheet) {
   if (allowedMimeTypes.indexOf(mimeType) > -1) {
     var metadata = getMetadata(file.getId() || 'unknown', sheet);
     sheet.appendRow(metadata);
+  } else {
+    throw new Error("No jpg, png, or mp4 files were found in scrapped folder.");
   }
 }
 
