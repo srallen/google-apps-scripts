@@ -46,14 +46,11 @@ function listImageFiles(folderName) {
   addSheetHeaders(sheet);
   // Handle folders with the same exact name, iterate through
   for (var i = 0; i < files.length; i++) {
-    Logger.log(files[i].hasNext())
     if (files[i].hasNext()) {
       while (files[i].hasNext()) {
         var file = files[i].next();
         addMetadata(file, sheet);   
       }    
-    } else {
-      throw new Error("No files found or in a nested folder hierarchy.");
     }
   }
 }
@@ -146,22 +143,14 @@ function getMetadata(fileId, sheet) {
   var time = hours + ":" + minutes + ":" + seconds;
 
   var infoBox = 
-    "<div class='cartodb-popup v2'>" +
-      "<a href='#close' class='cartodb-popup-close-button close'>x</a>" +
-      "<div class='cartodb-popup-content-wrapper'>" +
-        "<div class='cartodb-popup-content'>" +
-          "<h4>" + sheetHeaders[1] + "</h4>" +
-          "<p>" + createdDateTime + "</p>" +
-          "<h4>" + sheetHeaders[6] + "</h4>" +
-          "<p>" + location + "</p>" +
-          "<h4>" + sheetHeaders[11] + "</h4>" +
-          "<img src=" + contentUrl + " width='100px' />" +
-          "<h4>" + sheetHeaders[5] + "</h4>" +
-          "<p>" + file.title + "</p>" +
-        "</div>" +
-      "</div>" +
-      "<div class='cartodb-popup-tip-container'></div>" +
-    "</div>";
+    "<h4>" + sheetHeaders[1] + "</h4>" +
+    "<p>" + createdDateTime + "</p>" +
+    "<h4>" + sheetHeaders[6] + "</h4>" +
+    "<p>" + location + "</p>" +
+    "<h4>" + sheetHeaders[10] + "</h4>" +
+    "<img src=" + contentUrl + " width='100px' />" +
+    "<h4>" + sheetHeaders[5] + "</h4>" +
+    "<p>" + file.title + "</p>";
   
   // Build metadata row
   var metadata = [file.id, createdDateTime, imageDateTime, date, time, file.title, location, latitude, longitude, file.thumbnailLink, contentUrl, duplicate, infoBox];
@@ -175,5 +164,3 @@ function checkForDuplicates(sheet, lastRow) {
   
   return currentFileIds.getValues();
 }
-
-
