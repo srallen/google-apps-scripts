@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link rel="stylesheet" href="https://ssl.gstatic.com/docs/script/css/add-ons.css">
+  <script>
+    // IMPORTANT: Replace the value for DEVELOPER_KEY with the API key obtained
+    // from the Google Developers Console.
+    var DEVELOPER_KEY = 'ABCD...';
+    var DIALOG_DIMENSIONS = {width: 600, height: 425};
+    var pickerApiLoaded = false;
+    
+    /**
+     * Loads the Google Picker API.
+     */
+    function onApiLoad() {
+      gapi.load('picker', {'callback': function() {
+        pickerApiLoaded = true;
+      }});
+      
+      google.script.run
+        .withSuccessHandler(createPicker)
+        .withFailureHandler(
+          function(msg) {
+            showStatus(msg, 'error');
+          })
+        .getOAuthToken();
+     }
+  
+      /**
+     * Creates a Picker that can access the user's spreadsheets. This function
+     * uses advanced options to hide the Picker's left navigation panel and
+     * default title bar.
+     *
+     * @param {string} token An OAuth 2.0 access token that lets Picker access the
+     *     file type specified in the addView call.
+     */
+    function createPicker(token) {
+      if (pickerApiLoaded && token) {
+        var view = new google.picker.DocsView(google.picker.ViewId.FOLDERS);
+        view.setIncludeFolders(true);
+        view.setSelectFolderEnabled(true);
+        var picker = new google.picker.PickerBuilder()
+            // Instruct Picker to display only spreadsheets in Drive. For other
+            // views, see https://developers.google.com/picker/docs/#otherviews
+            .addView(view)
+            // Hide the navigation panel so that Picker fills more of the dialog.
+            .enableFeature(google.picker.Feature.NAV_HIDDEN)
+            // Hide the title bar since an Apps Script dialog already has a title.
+            .hideTitleBar()
+            .setOAuthToken(token)
+            .setDeveloperKey(DEVELOPER_KEY)
+            .setCallback(pickerCallback)
+            .setOrigin('https://docs.google.com')
+            // Instruct Picker to fill the dialog, minus 2 pixels for the border.
+            .setSize(DIALOG_DIMENSIONS.width - 2,
+                DIALOG_DIMENSIONS.height - 2)
+            .build();
+        picker.setVisible(true);
+      } else {
+        showStatus('Unable to load the file picker.');
+      }
+    }
+    
+    /**
+     * A callback function that extracts the chosen document's metadata from the
+     * response object. For details on the response object, see
+     * https://developers.google.com/picker/docs/result
+     *
+     * @param {object} data The response object.
+     */
+    function pickerCallback(data) {
+      var action = data[google.picker.Response.ACTION];
+      if (action == google.picker.Action.PICKED) {
+        var doc = data[google.picker.Response.DOCUMENTS][0];
+        var title = doc[google.picker.Document.NAME];
+        onProcessMediaClick(title);
+        showStatus('Processing...');
+      } else if (action == google.picker.Action.CANCEL) {
+        google.script.host.close();
+      }
+    }
+
+  /**
+   * Call listMediaFiles and handle response
+   */
+  function onProcessMediaClick(title) {
+      google.script.run
+        .withSuccessHandler(
+          function(msg, element) {
+            // Respond to success conditions here.
+            showStatus('Processed media files successfully');
+            element.disabled = false;
+            google.script.host.close();
+          })
+        .withFailureHandler(
+          function(msg, element) {
+            // Respond to failure conditions here.
+            showStatus(msg, 'error');
+            element.disabled = false;
+          })
+        .withUserObject(this)
+        .listMediaFiles(title);
+  }
+
+    /**
+     * Displays an error message within the #result element.
+     *
+     * @param {string} message The error message to display.
+     */
+     function showStatus(msg, classId) {
+       var pickerStatus = document.getElementById('picker-status');
+       pickerStatus.className = "";
+       pickerStatus.innerHTML = msg;
+       if (classId) {
+         pickerStatus.classList.add(classId);
+       }
+     }
+     
+  </script>
+</head>
+<body>
+  <div>
+    <p id='picker-status'>Loading...</p>
+  </div>
+  <script src="https://apis.google.com/js/api.js?onload=onApiLoad"></script>
+</body>
+</html>

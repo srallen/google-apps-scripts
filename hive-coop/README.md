@@ -4,7 +4,7 @@ This script will eventually be available in the Google Sheets add-on store, but 
 
 ## How to use
 
-Once the add-on is installed, open up the sidebar by going to the Add-ons > Process Media > Start Media Processing. You will see a text field to input the exact name of the folder that contains the media you wish to scrape its relevant metadata from. Input the exact folder name and the metadata will automatically populate in the spreadsheet.
+Once the add-on is installed, open up the sidebar by going to the Add-ons > Process Media > Start Media Processing. You will see a text field to input the exact name of the folder that contains the media you wish to scrape its relevant metadata from. Alternatively, a Drive explorer is available if you click "Select Folder" to select the folder from drive. The metadata will automatically populate in the spreadsheet.
 
 ### Information about the metadata fields that are added
 

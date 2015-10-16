@@ -33,16 +33,24 @@ function onInstall(e) {
 function showSidebar() {
   var ui = HtmlService.createTemplateFromFile('Sidebar')
       .evaluate()
-      .setTitle(SIDEBAR_TITLE);
+      .setTitle(SIDEBAR_TITLE)
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
   SpreadsheetApp.getUi().showSidebar(ui);
+  PropertiesService.getScriptProperties().setProperty('selectedSheet', 'current-sheet'); // Set default value
+}
+
+function setSheetToAddTo(sheetToAddTo) {
+  PropertiesService.getScriptProperties().setProperty('selectedSheet', sheetToAddTo);
 }
 
 var sheetHeaders = ["id", "file_created_datetime", "image_exif_datetime", "file_created_date", "file_created_time", "title",  "location", "latitude", "longitude", "thumbnail_url", "web_content_url", "duplicate", "infobox_html"];
-function listImageFiles(folderName) {
+function listMediaFiles(folderName) {
+  var selectedSheet = PropertiesService.getScriptProperties().getProperty('selectedSheet');
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheets()[0];
+  setupSheet(selectedSheet, ss, folderName);
+  var sheet = ss.getActiveSheet();
   var files = getFilesFromFolder(folderName);
-
+  
   addSheetHeaders(sheet);
   // Handle folders with the same exact name, iterate through
   for (var i = 0; i < files.length; i++) {
@@ -53,6 +61,25 @@ function listImageFiles(folderName) {
       }    
     }
   }
+}
+
+function setupSheet(selectedSheet, ss, folderName) {
+  var sheet;
+  
+  if (selectedSheet == "current-sheet") {
+    sheet = ss.getSheets()[0];
+    if (sheet.getName() !== folderName) {
+      sheet.setName(folderName)
+    }
+  } else if (selectedSheet == "new-sheet") {
+    // Check to see if sheet already exists and make name unique
+    if (ss.getSheetByName(folderName) != null) {
+      ss.insertSheet(folderName + " " + Utilities.base64Encode(Math.random()));
+    } else {
+      ss.insertSheet(folderName);
+    }
+    sheet = ss.getSheetByName(folderName);
+  } 
 }
 
 // Add sheet headers
@@ -163,4 +190,31 @@ function checkForDuplicates(sheet, lastRow) {
   var currentFileIds = sheet.getRange(2, 1, lastRow);
   
   return currentFileIds.getValues();
+}
+
+/**
+ * Displays an HTML-service dialog in Google Sheets that contains client-side
+ * JavaScript code for the Google Picker API.
+ */
+function showPicker() {
+  var html = HtmlService.createHtmlOutputFromFile('Picker.html')
+      .setWidth(600)
+      .setHeight(425)
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  SpreadsheetApp.getUi().showModalDialog(html, 'Select a folder');
+}
+
+/**
+ * Gets the user's OAuth 2.0 access token so that it can be passed to Picker.
+ * This technique keeps Picker from needing to show its own authorization
+ * dialog, but is only possible if the OAuth scope that Picker needs is
+ * available in Apps Script. In this case, the function includes an unused call
+ * to a DriveApp method to ensure that Apps Script requests access to all files
+ * in the user's Drive.
+ *
+ * @return {string} The user's OAuth 2.0 access token.
+ */
+function getOAuthToken() {
+  DriveApp.getRootFolder();
+  return ScriptApp.getOAuthToken();
 }

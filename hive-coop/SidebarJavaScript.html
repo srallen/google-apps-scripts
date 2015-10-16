@@ -5,20 +5,43 @@
    */
   $(function() {
     // Assign handler functions to sidebar elements here, if needed.
-    $('#sidebar-process-images-button').click(onProcessImagesClick);
-
+    $('#sidebar-process-media-button').click(onProcessMediaClick);
+    $('#sidebar-select-folder-button').click(showPickerModal);
+    $('input[type="radio"]').click(setSelectedSheet);
     // Call the server here to retrieve any information needed to build
     // the dialog, if necessary.
   });
-
+ 
+  function setSelectedSheet() {
+    var selectedSheet = $('input[type="radio"]:checked').val();
+    google.script.run
+      .withSuccessHandler()
+      .withFailureHandler(
+        function(msg) {
+        showStatus(msg, 'error');
+      })
+      .setSheetToAddTo(selectedSheet);
+  }
+  
+  function showPickerModal() {
+    google.script.run
+      .withSuccessHandler()
+      .withFailureHandler(
+        function(msg) {
+          showStatus(msg, 'error');
+        })
+      .showPicker();
+  }
+    
   /**
    * Calls the server to retrieve information from the sheet.
    * Gets the value in the active cell, which is then placed in the
    * sidebar text field.
    */
-  function onProcessImagesClick() {
+  function onProcessMediaClick() {
     // Gather any information that needs to be sent to the server here.
     var value = $('#sidebar-value').val();
+
     showStatus('Processing...');
     // Send the value to the server and handle the response.
     google.script.run
@@ -36,7 +59,7 @@
             element.disabled = false;
           })
         .withUserObject(this)
-        .listImageFiles(value);
+        .listMediaFiles(value);
   }
 
   /**

@@ -7,12 +7,27 @@
   Process images and videos from your Google Drive and add its metadata into your current sheet. Only jpg, png, and mp4 file extensions are processed.
   </p>
   <div class="block form-group" id="sidebar-value-block">
+    <p>Input the exact folder name or use the Select Folder button below to select from a list of folders on your Google Drive.</p>
     <label for="sidebar-value">Folder name:</label>
-    <input id="sidebar-value">
+    <input type="text" id="sidebar-value" class="width-100">
+    <span>or</span>
+    <button type="button" id="sidebar-select-folder-button" class="action">Select Folder</button>
+  </div>
+  <div class="block form-group">
+    <p>Set to add to current sheet or to a new sheet:</p>
+    <div>
+      <input type="radio" name="sheet" id="current-sheet" value="current-sheet" checked>
+      <label for="current-sheet">Current Sheet</label>
+    </div>
+    <div>
+      <input type="radio" name="sheet" id="new-sheet" value="new-sheet">
+      <label for="new-sheet">New Sheet</label>
+    </div>
   </div>
   <div class="block" id="sidebar-button-bar">
-    <button id="sidebar-process-images-button">Process Media</button>
+    <button type="button" id="sidebar-process-media-button" class="action">Process Media</button>
   </div>
+  <p id='result'></p>
   <div id="sidebar-status"></div>
 </div>
 
@@ -23,3 +38,4 @@
 
 <!-- Use a templated HTML printing scriptlet to import JavaScript. -->
 <?!= HtmlService.createHtmlOutputFromFile('SidebarJavaScript').getContent(); ?>
+<script src="https://apis.google.com/js/api.js?onload=onApiLoad"></script>
