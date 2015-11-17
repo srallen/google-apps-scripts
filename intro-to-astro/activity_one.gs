@@ -42,7 +42,7 @@ function addFormSubmission(institution, institutionAddress, location, locationAd
   // Setup latitude and longitude headers if needed
   setupHeaders(sheet, lastColumnWithContent);
   
-  sheet.appendRow([date, institution, location, institutionGeocoded[0], institutionGeocoded[1], locationGeocoded[0], locationGeocoded[1]]);
+  sheet.appendRow([date, location, institution, locationGeocoded[0], locationGeocoded[1], institutionGeocoded[0], institutionGeocoded[1]]);
 }
 
 function getDate() {
