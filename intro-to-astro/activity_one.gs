@@ -1,141 +1,84 @@
+var DIALOG_TITLE = 'Student Location Survey';
+
 function onOpen() {
-  var menu = [{name: 'Geolocate', functionName: 'convertToLatLong'}, {name: 'Add institution to form', functionName: 'openDialog'}];
+  var menu = [
+    {name: 'Open Form', functionName: 'createAndOpenForm'}
+  ];
   SpreadsheetApp.getActive().addMenu('Map', menu);    
 }
 
-function convertToLatLong() {
+function createAndOpenForm() {
+  var ui = HtmlService.createTemplateFromFile('Form')
+      .evaluate()
+      .setWidth(400)
+      .setHeight(215)
+      .setSandboxMode(HtmlService.SandboxMode.IFRAME);
+  SpreadsheetApp.getUi().showModalDialog(ui, DIALOG_TITLE);
+}
+
+function setupHeaders(sheet, lastColumnWithContent) {
+  var headerRow = sheet.getSheetValues(1, 1, 1, lastColumnWithContent);
+  
+  if (headerRow[0].indexOf('Student latitude') === -1) {
+    sheet.getRange(1, lastColumnWithContent + 1, 1, 5).setValues([['Student longitude', 'Student latitude', 'Institution longitude', 'Institution latitude', 'Calculated Distance']]);
+  }
+}
+
+function addFormSubmission(institution, institutionAddress, location, locationAddress) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('Student Responses'),
       lastColumnWithContent = sheet.getLastColumn(),
       lastRowWithContent = sheet.getLastRow(), 
-      headerRow = sheet.getSheetValues(1, 1, 1, lastColumnWithContent),
       lastCellValue = sheet.getRange(lastRowWithContent, 2).getValues(),
       geocoder = Maps.newGeocoder(),
-      ui = SpreadsheetApp.getUi();
+      ui = SpreadsheetApp.getUi(),
+      date = getDate(),
+      submission = [date];
   
-  // Setup latitude and longitude headers if needed
-  if (headerRow[0].indexOf('Student latitude') === -1) {
-    sheet.getRange(1, lastColumnWithContent + 1, 1, 5).setValues([['Student longitude', 'Student latitude', 'Institution longitude', 'Institution latitude', 'Calculated Distance']]);
-  }
-  
-  // geolocate students response and university/institution
-  var rowPositionToStart = determineRowPositionToStart(sheet, lastRowWithContent);
+  var rowPositionToStart = sheet.getLastRow() + 1;
+  var institutionGeocoded = geolocate(geocoder, institutionAddress);
+  var locationGeocoded = geolocate(geocoder, locationAddress);
 
-  if (rowPositionToStart - 1 !== lastRowWithContent) {
-    var studentLocationsToBeGeocoded = sheet.getRange(rowPositionToStart, 2, lastRowWithContent - rowPositionToStart + 1).getValues();
-    var studentRangeToInsert = sheet.getRange(rowPositionToStart, 4, lastRowWithContent - rowPositionToStart + 1, 2);
-    var institutionLocationsToBeGeocoded = sheet.getRange(rowPositionToStart, 3, lastRowWithContent - rowPositionToStart + 1).getValues();
-    var institutionRangeToInsert = sheet.getRange(rowPositionToStart, 6, lastRowWithContent - rowPositionToStart + 1, 2);
-    geolocate(geocoder, studentLocationsToBeGeocoded, studentRangeToInsert);
-    geolocate(geocoder, institutionLocationsToBeGeocoded, institutionRangeToInsert);
-  } else {
-    ui.alert("No new locations to geolocate");
-  }
+  // Setup latitude and longitude headers if needed
+  setupHeaders(sheet, lastColumnWithContent);
+  
+  sheet.appendRow([date, institution, location, institutionGeocoded[0], institutionGeocoded[1], locationGeocoded[0], locationGeocoded[1]]);
 }
 
-function geolocate(geocoder, locationsToBeGeocoded, rangeToInsert) {
+function getDate() {
+  var formattedDate;
+  var date = new Date();
+  
+  var year = date.getUTCFullYear();
+  var month = date.getUTCMonth();
+  var day = date.getUTCDate();
+  var hour = date.getUTCHours();
+  var minutes = date.getUTCMinutes();
+  var seconds = date.getUTCSeconds();
+  
+  //month 2 digits
+  month = ("0" + (month + 1)).slice(-2);
+  formattedDate = month + '/' + day  + "/" + year + " " + hour + ":" + minutes + ":" + seconds;
+  
+  return formattedDate;
+}
+
+function geolocate(geocoder, location) {
   var latLongResults = [];
   var ui = SpreadsheetApp.getUi()
   
-  for (var i = 0; i < locationsToBeGeocoded.length; i++) {
-    var geocodedLocation = geocoder.geocode(locationsToBeGeocoded[i]);
+  var geocodedLocation = geocoder.geocode(location);
 
-    if (geocodedLocation.status === "OK") {
-      var results = geocodedLocation.results;
-      var lat = results[0].geometry.location.lat;
-      var long = results[0].geometry.location.lng;
+  if (geocodedLocation.status === "OK") {
+    var results = geocodedLocation.results;
+    var lat = results[0].geometry.location.lat;
+    var long = results[0].geometry.location.lng;
 
-      latLongResults.push([long, lat]);
-    } else {
-      ui.alert("Error parsing location. Check form responses for invalid location.");
-      latLongResults.push(["invalid", "invalid"]);
-    }
-  }
-  if (latLongResults.length > 0) {
-     rangeToInsert.setValues(latLongResults); 
-  }
-}
-
-function sendToMaps_() {
-  Logger.log('sendToMaps');
-}
-
-function lastValue(column) {
-  var lastRow = SpreadsheetApp.getActiveSheet().getMaxRows();
-  var values = SpreadsheetApp.getActiveSheet().getRange(column + "1:" + column + lastRow).getValues();
-
-  for (; values[lastRow - 1] == "" && lastRow > 0; lastRow--) {}
-  return values[lastRow - 1];
-}
-
-function determineRowPositionToStart(sheet, lastRowWithContent) {
-  var rowPositionToStart;
-  var latLongColumn = sheet.getRange(2, 4, lastRowWithContent, 1).getValues();
-  // Remove empty objects out of returned range
-  var newArray = [];
-  for (var i = 0; i < latLongColumn.length; i++) {
-    for (var j = 0; j < latLongColumn[i].length; j++) {
-      if (latLongColumn[i][j]) {
-        newArray.push(latLongColumn[i][j]);
-      }
-    }
-  }
-  
-  if (newArray.length) {
-    rowPositionToStart = newArray.length + 2;
+    latLongResults = [long, lat];
   } else {
-    rowPositionToStart = 2;
+    ui.alert("Error parsing location. Check form responses for invalid location.");
+    latLongResults = ["invalid", "invalid"];
   }
-  return rowPositionToStart;
-}
 
-function openDialog() {
-  var ui = SpreadsheetApp.getUi();
-  
-  var result = ui.prompt(
-    'Add the full name of your institution or university.',
-    'Please enter your institution\'s name:',
-    ui.ButtonSet.OK_CANCEL);
-
-  // Process the user's response.
-  var button = result.getSelectedButton();
-  var institutionName = result.getResponseText();
-  if (button == ui.Button.OK) {
-    // User clicked "OK".
-    addInstitution(institutionName);
-  } 
-}
-
-function addInstitution(institutionName) {
-  var existingForm = FormApp.openById('1SHB8B7JXYVAY0MNydfsJMq5PNRWa5poRATofDjTUW2s');
-  var items = existingForm.getItems();
-  var ui = SpreadsheetApp.getUi();
-  var geocoder = Maps.newGeocoder();
-  
-  if (items[1].getTitle() === "What is your institution?") {
-    var listItem = items[1].asListItem()
-    var choices = listItem.getChoices();
-    var newInstitution,
-        geocodedLocation;
-    
-    for (var i = 0; i < choices.length; i++) {
-      var choiceValue = choices[i].getValue();
-      if (institutionName === choiceValue) {
-        ui.alert("Institution is already in the list.")
-      } else {
-        geocodedLocation = geocoder.geocode(institutionName);
-      }   
-    }   
-    
-    if (geocodedLocation.status === "OK") {
-      newInstitution = listItem.createChoice(institutionName);
-      choices.push(newInstitution);
-      listItem.setChoices(choices);
-      
-      ui.alert('Institution added to form.');
-    } else {
-      ui.alert('Error with institution name. Not found by Google Maps.');
-    }
-
-  }
+  return latLongResults;
 }
