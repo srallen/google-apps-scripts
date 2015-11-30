@@ -27,13 +27,9 @@ function setupHeaders(sheet, lastColumnWithContent) {
 function addFormSubmission(institution, institutionAddress, location, locationAddress) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('Student Responses'),
-      lastColumnWithContent = sheet.getLastColumn(),
-      lastRowWithContent = sheet.getLastRow(), 
-      lastCellValue = sheet.getRange(lastRowWithContent, 2).getValues(),
+      lastColumnWithContent = sheet.getLastColumn(), 
       geocoder = Maps.newGeocoder(),
-      ui = SpreadsheetApp.getUi(),
-      date = getDate(),
-      submission = [date];
+      date = getDate();
   
   var rowPositionToStart = sheet.getLastRow() + 1;
   var institutionGeocoded = geolocate(geocoder, institutionAddress);
